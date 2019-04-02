@@ -93,6 +93,12 @@ class TeeSight_Sync_Order {
 					'total' => (string) wc_format_decimal( $shipping_item['cost'], $deep ),
 				);
 			}
+			$data['meta_data'] = array(
+				array(
+					'key' => '_origin_site_url',
+					'value' => get_site_url(),
+				),
+			);
 			$result = $this->woocommerce->post( 'orders', $data );
 		}
 	}

@@ -18,6 +18,15 @@ class TeeSight_Sync_Order {
 				)
 			);
 		}
+		add_filter( 'http_request_host_is_external', array( $this, 'allow_custom_host' ), 10, 3 );
+	}
+
+	public function allow_custom_host( $allow, $host, $url ) {
+		$settings = get_option( 'teesight_order_options' );
+		if ( isset( $settings['site_address'] ) && strpos( $settings['site_address'], $host ) > 0 ) {
+			$allow = true;
+		}
+		return $allow;
 	}
 
 	public function sync_order( $order_id ) {

@@ -30,9 +30,37 @@ function teesight_sync_order_get_var( $key = '' ) {
 
 require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'class-option-page.php';
 require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'vendor/autoload.php';
+require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'vendor/CMB2/init.php';
 require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'class-sync-orders.php';
 
 class TeeSight_Sync_Order_Start {
+	public function __construct() {
+		add_action( 'cmb2_admin_init', array( $this, 'register_product_metabox' ) );
+	}
+
+	public function register_product_metabox() {
+		$prefix = '_product_';
+		/**
+		 * Metabox to add fields to categories and tags
+		 */
+		$cmb_term = new_cmb2_box(
+			array(
+				'id'               => $prefix . 'setting',
+				'title'            => esc_html__( 'Full Print', 'teesight' ),
+				'object_types'     => array( 'product' ),
+				'context'      => 'side',
+				'priority'     => 'low',
+			)
+		);
+		$cmb_term->add_field(
+			array(
+				'name' => esc_html__( 'Upload full print', 'teesight' ),
+				'id'   => $prefix . 'full_print',
+				'type' => 'file',
+			)
+		);
+	}
+
 	public function new_order_created( $order_id ) {
 		$order = wc_get_order( $order_id );
 		if ( false === $order ) {
@@ -161,9 +189,6 @@ class TeeSight_Sync_Order_Start {
 				'amount' => wc_format_decimal( $coupon_item['discount_amount'], $dp ),
 			);
 		}
-		echo '<pre>Order data:';
-		print_r( $order_data );
-		echo '</pre>';
 		return $order_data;
 	}
 

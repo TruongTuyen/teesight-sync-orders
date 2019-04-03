@@ -73,6 +73,7 @@ class TeeSight_Sync_Order {
 				),
 			);
 
+			$product_site_slug = '';
 			foreach ( $order->get_items() as $item_id => $item ) {
 				$product = $item->get_product();
 				$product_id = null;
@@ -80,6 +81,13 @@ class TeeSight_Sync_Order {
 				if ( is_object( $product ) ) {
 					$product_id = $product->get_id();
 					$product_sku = $product->get_sku();
+					$_p_id = $product_id;
+					if ( ! empty( $item->get_variation_id() ) && ( 'product_variation' === $product->post_type ) ) {
+						$_p_id = $product->get_parent_id();
+					}
+					if ( get_post_meta( $_p_id, '_product_site_slug', true ) ) {
+						$product_site_slug = get_post_meta( $_p_id, '_product_site_slug', true );
+					}
 				}
 				$data['line_items'][] = array(
 					'name' => $item['name'],
@@ -104,8 +112,16 @@ class TeeSight_Sync_Order {
 			}
 			$data['meta_data'] = array(
 				array(
-					'key' => '_origin_site_url',
-					'value' => get_site_url(),
+					'key' => '_product_site_slug',
+					'value' => $product_site_slug,
+				),
+				array(
+					'key' => '_origin_order_id',
+					'value' => $order->get_id(),
+				),
+				array(
+					'key' => '_fullfill_status',
+					'value' => 'pending',
 				),
 			);
 			$result = $this->woocommerce->post( 'orders', $data );

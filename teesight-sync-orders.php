@@ -36,7 +36,35 @@ require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'class-sync-orders.ph
 class TeeSight_Sync_Order_Start {
 	public function __construct() {
 		add_action( 'cmb2_admin_init', array( $this, 'register_product_metabox' ) );
-		do_action( 'woocommerce_api_create_product', array( $this, 'update_rest_product_fullprint' ), PHP_INT_MAX, 2 );
+		add_filter( 'woocommerce_rest_pre_insert_product_object', array( $this, 'rest_update_meta' ), PHP_INT_MAX, 2 );
+	}
+
+	public function upload_image_as_attachment( $image_url = '', $post_id = 0, $title = '' ) {
+		$img_name = basename( $image_url );
+		$upload_dir = wp_get_upload_dir();
+		$local_url = $upload_dir['path'] . '/' . $img_name;
+		if ( file_exists( $local_url ) ) {
+			$img_url = $upload_dir['url'] . '/' . $img_name;
+			$id = attachment_url_to_postid( $img_url );
+			return $id;
+		} else {
+			if ( ! function_exists( 'media_sideload_image' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/media.php';
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+				require_once ABSPATH . 'wp-admin/includes/image.php';
+			}
+			$attachment_src = media_sideload_image( $image_url, $post_id, $title, 'src' );
+			$id = attachment_url_to_postid( $attachment_src );
+			return $id;
+		}
+	}
+
+	public function rest_update_meta( $product, $request ) {
+		$full_print_url = $request['full_print_url'];
+		$attachment_id = $this->upload_image_as_attachment( $full_print_url );
+		$product->update_meta_data( '_product_full_print_id', $attachment_id );
+		$product->update_meta_data( '_product_full_print', wp_get_attachment_url( $attachment_id ) );
+		return $product;
 	}
 
 	public function register_product_metabox() {
@@ -61,22 +89,7 @@ class TeeSight_Sync_Order_Start {
 			)
 		);
 	}
-
-	public function update_rest_product_fullprint( $id, $data ) {
-		$full_print_url = $data['full_print_url'];
-		$this->update_sync_product_fullprint( $id, $full_print_url );
-		update_post_meta( $id, 'need_update_fullprint', 'yes' );
-	}
-
-	public function update_sync_product_fullprint( $product_id = 0, $fullprint_url = '' ) {
-		$upload = wc_rest_upload_image_from_url( $fullprint_url );
-		$attachment_id = wc_rest_set_uploaded_image_as_attachment( $upload );
-		update_post_meta( $product_id, '_product_full_print_id', $attachment_id );
-		update_post_meta( $product_id, '_product_full_print', wp_get_attachment_url( $attachment_id ) );
-	}
-
 }
 
 new TeeSight_Sync_Order_Start();
-
 

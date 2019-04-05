@@ -74,6 +74,8 @@ class TeeSight_Sync_Order {
 			);
 
 			$product_site_slug = '';
+			$have_design = array();
+			$need_update_design = array();
 			foreach ( $order->get_items() as $item_id => $item ) {
 				$product = $item->get_product();
 				$product_id = null;
@@ -87,6 +89,15 @@ class TeeSight_Sync_Order {
 					}
 					if ( get_post_meta( $_p_id, '_product_site_slug', true ) ) {
 						$product_site_slug = get_post_meta( $_p_id, '_product_site_slug', true );
+					}
+					if ( get_post_meta( $_p_id, '_product_full_print', true ) ) {
+						$_p_fullprint_url = get_post_meta( $_p_id, '_product_full_print', true );
+						$have_design[ $_p_id ] = $_p_fullprint_url;
+					} else {
+						$need_update_design[] = array(
+							'product_id' => $_p_id,
+							'product_orgin_id' => get_post_meta( $_p_id, '_product_origin_id', true ),
+						);
 					}
 				}
 				$data['line_items'][] = array(
@@ -110,6 +121,11 @@ class TeeSight_Sync_Order {
 					'total' => (string) wc_format_decimal( $shipping_item['cost'], $deep ),
 				);
 			}
+
+			$order_fulfill_status = 'pending_design';
+			if ( count( $order->get_items() ) == count( $have_design ) ) {
+				$order_fulfill_status = 'pending';
+			}
 			$data['meta_data'] = array(
 				array(
 					'key' => '_product_site_slug',
@@ -120,8 +136,12 @@ class TeeSight_Sync_Order {
 					'value' => $order->get_id(),
 				),
 				array(
-					'key' => '_fullfill_status',
-					'value' => 'pending',
+					'key' => '_fulfill_status',
+					'value' => $order_fulfill_status,
+				),
+				array(
+					'key' => '_product_need_update_design',
+					'value' => $need_update_design,
 				),
 			);
 			$result = $this->woocommerce->post( 'orders', $data );

@@ -29,6 +29,24 @@ class TeeSight_Sync_Order {
 		return $allow;
 	}
 
+	public function get_origin_product_full_print( $product_id ) {
+		$return = false;
+		if ( null !== $this->woocommerce ) {
+			$product_info = $this->woocommerce->get( 'products/' . $product_id );
+			if ( isset( $product_info->meta_data ) && is_array( $product_info->meta_data ) && ! empty( $product_info->meta_data ) ) {
+				foreach ( $product_info->meta_data as $meta_data ) {
+					if ( isset( $meta_data->key ) && '_product_full_print' == $meta_data->key ) {
+						if ( '' !== $meta_data->value ) {
+							$return = $meta_data->value;
+							break;
+						}
+					}
+				}
+			}
+		}
+		return $return;
+	}
+
 	public function sync_order( $order_id ) {
 		$order = wc_get_order( $order_id );
 		$deep = 2;
@@ -90,13 +108,18 @@ class TeeSight_Sync_Order {
 					if ( get_post_meta( $_p_id, '_product_site_slug', true ) ) {
 						$product_site_slug = get_post_meta( $_p_id, '_product_site_slug', true );
 					}
-					if ( get_post_meta( $_p_id, '_product_full_print', true ) ) {
-						$_p_fullprint_url = get_post_meta( $_p_id, '_product_full_print', true );
+					$p_origin_id = get_post_meta( $_p_id, '_product_origin_id', true );
+					if ( get_post_meta( $_p_id, '_product_full_print', true ) || '' !== $this->get_origin_product_full_print( $p_origin_id ) ) {
+						if ( get_post_meta( $_p_id, '_product_full_print', true ) ) {
+							$_p_fullprint_url = get_post_meta( $_p_id, '_product_full_print', true );
+						} else {
+							$_p_fullprint_url = $this->get_origin_product_full_print( $p_origin_id );
+						}
 						$have_design[ $_p_id ] = $_p_fullprint_url;
 					} else {
 						$need_update_design[] = array(
 							'product_id' => $_p_id,
-							'product_orgin_id' => get_post_meta( $_p_id, '_product_origin_id', true ),
+							'product_orgin_id' => $p_origin_id,
 						);
 					}
 				}
@@ -150,3 +173,5 @@ class TeeSight_Sync_Order {
 }
 
 new TeeSight_Sync_Order();
+
+

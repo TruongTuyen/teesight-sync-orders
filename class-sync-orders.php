@@ -37,8 +37,7 @@ class TeeSight_Sync_Order {
 				foreach ( $product_info->meta_data as $meta_data ) {
 					if ( isset( $meta_data->key ) && '_product_full_print' == $meta_data->key ) {
 						if ( '' !== $meta_data->value ) {
-							$return = $meta_data->value;
-							break;
+							return $meta_data->value;
 						}
 					}
 				}
@@ -109,12 +108,11 @@ class TeeSight_Sync_Order {
 						$product_site_slug = get_post_meta( $_p_id, '_product_site_slug', true );
 					}
 					$p_origin_id = get_post_meta( $_p_id, '_product_origin_id', true );
-					if ( get_post_meta( $_p_id, '_product_full_print', true ) || '' !== $this->get_origin_product_full_print( $p_origin_id ) ) {
-						if ( get_post_meta( $_p_id, '_product_full_print', true ) ) {
-							$_p_fullprint_url = get_post_meta( $_p_id, '_product_full_print', true );
-						} else {
-							$_p_fullprint_url = $this->get_origin_product_full_print( $p_origin_id );
-						}
+					if ( get_post_meta( $_p_id, '_product_full_print', true ) ) {
+						$_p_fullprint_url = get_post_meta( $_p_id, '_product_full_print', true );
+						$have_design[ $_p_id ] = $_p_fullprint_url;
+					} elseif ( is_numeric( $p_origin_id ) && false !== $this->get_origin_product_full_print( $p_origin_id ) ) {
+						$_p_fullprint_url = $this->get_origin_product_full_print( $p_origin_id );
 						$have_design[ $_p_id ] = $_p_fullprint_url;
 					} else {
 						$need_update_design[] = array(

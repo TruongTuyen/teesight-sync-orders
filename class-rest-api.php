@@ -25,6 +25,17 @@ class TeeSight_Sync_Order_Rest_API extends WP_REST_Controller {
 		);
 		register_rest_route( 'teesight/v1', '/product_permalink/(?P<id>\w+)', $product_permalink );
 
+		$get_product_design = array(
+			'methods' => 'GET',
+			'callback' => array( $this, 'get_product_design' ),
+			'args' => array(
+				'id' => array(
+					'default' => 0,
+				),
+			),
+		);
+		register_rest_route( 'teesight/v1', '/product_design/(?P<id>\w+)', $get_product_design );
+
 		$update_product_design = array(
 			'methods' => 'POST',
 			'callback' => array( $this, 'update_product_design' ),
@@ -72,6 +83,18 @@ class TeeSight_Sync_Order_Rest_API extends WP_REST_Controller {
 			}
 		}
 		return $product_url;
+	}
+
+	public function get_product_design( $request ) {
+		$product_design = '';
+		if ( isset( $request['id'] ) ) {
+			$product_id = $this->get_product_id_by_uniqid( $request['id'] );
+			if ( $product_id > 0 ) {
+				$design_id = get_post_meta( $product_id, '_product_full_print_id', true );
+				$product_design = wp_get_attachment_url( $design_id );
+			}
+		}
+		return $product_design;
 	}
 
 	public function update_product_design( $request ) {

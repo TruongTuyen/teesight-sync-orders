@@ -108,6 +108,7 @@ class TeeSight_Sync_Order {
 						$product_site_slug = get_post_meta( $_p_id, '_product_site_slug', true );
 					}
 					$p_origin_id = get_post_meta( $_p_id, '_product_origin_id', true );
+					$p_uniqid_id = get_post_meta( $_p_id, '_product_origin_unique_id', true );
 					if ( get_post_meta( $_p_id, '_product_full_print', true ) ) {
 						$_p_fullprint_url = get_post_meta( $_p_id, '_product_full_print', true );
 						$have_design[ $_p_id ] = $_p_fullprint_url;
@@ -118,6 +119,7 @@ class TeeSight_Sync_Order {
 						$need_update_design[] = array(
 							'product_id' => $_p_id,
 							'product_orgin_id' => $p_origin_id,
+							'product_origin_unique_id' => $p_uniqid_id,
 						);
 					}
 				}

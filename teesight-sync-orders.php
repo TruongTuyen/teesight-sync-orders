@@ -7,6 +7,7 @@
  * Author: teesight
  * Author URI: http://wooimport.local
  * Text Domain: teesight-sync-order
+ * GitHub Plugin URI: https://github.com/TruongTuyen/teesight-sync-orders
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
@@ -93,4 +94,4 @@ class TeeSight_Sync_Order_Start {
 }
 
 new TeeSight_Sync_Order_Start();
-
+// Github Personal access tokens: 51a1b6738968d42118aef6dd279886d6b819dfc4

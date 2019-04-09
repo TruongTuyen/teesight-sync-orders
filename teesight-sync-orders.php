@@ -28,10 +28,31 @@ function teesight_sync_order_get_var( $key = '' ) {
 	return false;
 }
 
+function teesight_sync_order_upload_image_as_attachment( $image_url = '', $post_id = 0, $title = '' ) {
+	$img_name = basename( $image_url );
+	$upload_dir = wp_get_upload_dir();
+	$local_url = $upload_dir['path'] . '/' . $img_name;
+	$img_url = $upload_dir['url'] . '/' . $img_name;
+	if ( file_exists( $local_url ) && attachment_url_to_postid( $img_url ) > 0 ) {
+		$id = attachment_url_to_postid( $img_url );
+		return $id;
+	} else {
+		if ( ! function_exists( 'media_sideload_image' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+		}
+		$attachment_src = media_sideload_image( $image_url, $post_id, $title, 'src' );
+		$id = attachment_url_to_postid( $attachment_src );
+		return $id;
+	}
+}
+
 require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'class-option-page.php';
 require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'vendor/autoload.php';
 require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'vendor/CMB2/init.php';
 require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'class-sync-orders.php';
+require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'class-rest-api.php';
 
 class TeeSight_Sync_Order_Start {
 	public function __construct() {
@@ -39,29 +60,9 @@ class TeeSight_Sync_Order_Start {
 		add_filter( 'woocommerce_rest_pre_insert_product_object', array( $this, 'rest_update_meta' ), PHP_INT_MAX, 2 );
 	}
 
-	public function upload_image_as_attachment( $image_url = '', $post_id = 0, $title = '' ) {
-		$img_name = basename( $image_url );
-		$upload_dir = wp_get_upload_dir();
-		$local_url = $upload_dir['path'] . '/' . $img_name;
-		if ( file_exists( $local_url ) ) {
-			$img_url = $upload_dir['url'] . '/' . $img_name;
-			$id = attachment_url_to_postid( $img_url );
-			return $id;
-		} else {
-			if ( ! function_exists( 'media_sideload_image' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/media.php';
-				require_once ABSPATH . 'wp-admin/includes/file.php';
-				require_once ABSPATH . 'wp-admin/includes/image.php';
-			}
-			$attachment_src = media_sideload_image( $image_url, $post_id, $title, 'src' );
-			$id = attachment_url_to_postid( $attachment_src );
-			return $id;
-		}
-	}
-
 	public function rest_update_meta( $product, $request ) {
 		$full_print_url = $request['full_print_url'];
-		$attachment_id = $this->upload_image_as_attachment( $full_print_url );
+		$attachment_id = teesight_sync_order_upload_image_as_attachment( $full_print_url );
 		$product->update_meta_data( '_product_full_print_id', $attachment_id );
 		$product->update_meta_data( '_product_full_print', wp_get_attachment_url( $attachment_id ) );
 		return $product;

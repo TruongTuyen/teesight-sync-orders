@@ -171,5 +171,3 @@ class TeeSight_Sync_Order {
 }
 
 new TeeSight_Sync_Order();
-
-

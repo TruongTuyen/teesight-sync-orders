@@ -2,11 +2,13 @@
 use Automattic\WooCommerce\Client;
 class TeeSight_Sync_Order {
 	protected $woocommerce = null;
+	protected $remote_site_url = '';
 
 	public function __construct() {
 		add_action( 'woocommerce_thankyou', array( $this, 'sync_order' ), PHP_INT_MAX, 1 );
 		$settings = get_option( 'teesight_order_options' );
 		if ( isset( $settings['site_address'] ) && isset( $settings['consumer_key'] ) && isset( $settings['consumer_secret'] ) ) {
+			$this->remote_site_url = $settings['site_address'];
 			$this->woocommerce = new Client(
 				$settings['site_address'],
 				$settings['consumer_key'],
@@ -19,6 +21,34 @@ class TeeSight_Sync_Order {
 			);
 		}
 		add_filter( 'http_request_host_is_external', array( $this, 'allow_custom_host' ), 10, 3 );
+		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
+	}
+
+	public function manual_create_order( $order_id ) {
+		$order = wc_get_order( $order_id );
+		$order_status = $order->get_status();
+		if ( 'processing' == $order_status ) {
+			$order_uniqid = get_post_meta( $order_id, '_origin_order_uniqid', true );
+			update_post_meta( $order_id, 'order_create_manual_status', $order_status );
+			update_post_meta( $order_id, 'order_create_manual_status_remote_url', $this->remote_site_url );
+			$result = $this->remote_check_order_exists( $order_uniqid );
+			if ( ! $result ) {
+				$this->sync_order( $order_id, true );
+			}
+		}
+	}
+
+	public function remote_check_order_exists( $order_uniqid ) {
+		$rest_api_link = untrailingslashit( $this->remote_site_url ) . '/wp-json/teesight/v1/order_exists/' . $order_uniqid;
+		$remote_args = array(
+			'timeout' => 12,
+		);
+		$response = wp_remote_get( $rest_api_link, $remote_args );
+		$result = json_decode( $response['body'], true );
+		if ( isset( $result['is_exist'] ) && 'true' === $result['is_exist'] ) {
+			return true;
+		}
+		return false;
 	}
 
 	public function allow_custom_host( $allow, $host, $url ) {
@@ -46,7 +76,7 @@ class TeeSight_Sync_Order {
 		return $return;
 	}
 
-	public function sync_order( $order_id ) {
+	public function sync_order( $order_id, $is_manual = false ) {
 		$order = wc_get_order( $order_id );
 		$deep = 2;
 		if ( false === $order ) {
@@ -149,6 +179,8 @@ class TeeSight_Sync_Order {
 			if ( count( $order->get_items() ) == count( $have_design ) ) {
 				$order_fulfill_status = 'pending';
 			}
+			$order_uniqid = uniqid( 'order_uniqid_' );
+			update_post_meta( $order_id, '_origin_order_uniqid', $order_uniqid );
 			$data['meta_data'] = array(
 				array(
 					'key' => '_product_site_slug',
@@ -159,6 +191,10 @@ class TeeSight_Sync_Order {
 					'value' => $order->get_id(),
 				),
 				array(
+					'key' => '_origin_order_uniqid',
+					'value' => $order_uniqid,
+				),
+				array(
 					'key' => '_fulfill_status',
 					'value' => $order_fulfill_status,
 				),
@@ -167,6 +203,12 @@ class TeeSight_Sync_Order {
 					'value' => $need_update_design,
 				),
 			);
+			if ( $is_manual ) {
+				$data['meta_data'][] = array(
+					'key' => '_is_manual_created',
+					'value' => 'true',
+				);
+			}
 			$result = $this->woocommerce->post( 'orders', $data );
 		}
 	}

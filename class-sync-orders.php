@@ -82,12 +82,20 @@ class TeeSight_Sync_Order {
 		if ( false === $order ) {
 			return false;
 		}
+		$order_uniqid = uniqid( 'order_uniqid_' );
+		update_post_meta( $order_id, '_origin_order_uniqid', $order_uniqid );
+		if ( ! $is_manual ) {
+			if ( 'processing' !== $order->status ) {
+				return false;
+			}
+		}
+
 		if ( null !== $this->woocommerce ) {
 			$data = array(
 				'payment_method' => $order->get_payment_method(),
 				'payment_method_title' => $order->get_payment_method_title(),
-				'set_paid' => false,
-				'status'    => 'pending',
+				// 'set_paid' => false,
+				'status'    => 'processing',
 				'currency' => $order->get_currency(),
 				'date_created' => $order->get_date_created()->date( 'Y-m-d H:i:s' ),
 				'date_modified' => $order->get_date_modified()->date( 'Y-m-d H:i:s' ),
@@ -159,8 +167,6 @@ class TeeSight_Sync_Order {
 			}
 
 			$order_fulfill_status = 'pending';
-			$order_uniqid = uniqid( 'order_uniqid_' );
-			update_post_meta( $order_id, '_origin_order_uniqid', $order_uniqid );
 			$data['meta_data'] = array(
 				array(
 					'key' => '_product_site_slug',

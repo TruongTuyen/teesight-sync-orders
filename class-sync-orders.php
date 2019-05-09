@@ -24,9 +24,18 @@ class TeeSight_Sync_Order {
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 	}
 
+	public function update_order_uniqid( $order_id ) {
+		$order_uniqid = uniqid( 'order_uniqid_' );
+		update_post_meta( $order_id, '_origin_order_uniqid', $order_uniqid );
+	}
+
 	public function manual_create_order( $order_id ) {
 		$order = wc_get_order( $order_id );
 		$order_status = $order->get_status();
+		if ( false === get_post_meta( $order_id, '_origin_order_uniqid', true ) || empty( get_post_meta( $order_id, '_origin_order_uniqid', true ) ) ) { // First time create will not have uniqid.
+			$this->update_order_uniqid( $order_id );
+		}
+
 		if ( 'processing' == $order_status ) {
 			$order_uniqid = get_post_meta( $order_id, '_origin_order_uniqid', true );
 			update_post_meta( $order_id, 'order_create_manual_status', $order_status );
@@ -45,9 +54,9 @@ class TeeSight_Sync_Order {
 		);
 		$response = wp_remote_get( $rest_api_link, $remote_args );
 		$result = json_decode( $response['body'], true );
-		if ( is_array( $result['is_exist'] ) && isset( $result['is_exist'] ) && 'true' === $result['is_exist'] ) {
+		if ( is_array( $result ) && isset( $result['is_exist'] ) && 'true' === $result['is_exist'] ) {
 			return 'exist';
-		} elseif ( is_array( $result['is_exist'] ) && isset( $result['is_exist'] ) && 'fail' === $result['is_exist'] ) {
+		} elseif ( is_array( $result ) && isset( $result['is_exist'] ) && 'fail' === $result['is_exist'] ) {
 			return 'not_exist';
 		}
 		return 'unknow';
@@ -84,19 +93,21 @@ class TeeSight_Sync_Order {
 		if ( false === $order ) {
 			return false;
 		}
-		$order_uniqid = uniqid( 'order_uniqid_' );
-		update_post_meta( $order_id, '_origin_order_uniqid', $order_uniqid );
+		if ( false === get_post_meta( $order_id, '_origin_order_uniqid', true ) || empty( get_post_meta( $order_id, '_origin_order_uniqid', true ) ) ) { // First time create will not have uniqid.
+			$this->update_order_uniqid( $order_id );
+		}
 		if ( ! $is_manual ) {
 			if ( 'processing' !== $order->status ) {
 				return false;
 			}
 		}
 
-		if ( null !== $this->woocommerce ) {
+		$order_uniqid = get_post_meta( $order_id, '_origin_order_uniqid', true );
+		$result = $this->remote_check_order_exists( $order_uniqid );
+		if ( null !== $this->woocommerce && 'not_exist' === $result ) {
 			$data = array(
 				'payment_method' => $order->get_payment_method(),
 				'payment_method_title' => $order->get_payment_method_title(),
-				// 'set_paid' => false,
 				'status'    => 'processing',
 				'currency' => $order->get_currency(),
 				'date_created' => $order->get_date_created()->date( 'Y-m-d H:i:s' ),

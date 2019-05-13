@@ -22,6 +22,13 @@ class TeeSight_Sync_Order {
 		}
 		add_filter( 'http_request_host_is_external', array( $this, 'allow_custom_host' ), 10, 3 );
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
+		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
+	}
+
+	public function detect_order_bulk_action( $id, $new_status ) {
+		if ( 'processing' === $new_status && get_post_status( $id ) ) {
+			$this->manual_create_order( $id );
+		}
 	}
 
 	public function update_order_uniqid( $order_id ) {

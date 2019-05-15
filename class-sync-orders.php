@@ -110,6 +110,10 @@ class TeeSight_Sync_Order {
 		}
 
 		$order_uniqid = get_post_meta( $order_id, '_origin_order_uniqid', true );
+		$order_synced = get_post_meta( $order_id, '_order_synced', true );
+		if ( false !== $order_synced && 'yes' == $order_synced ) {
+			return false;
+		}
 		$result = $this->remote_check_order_exists( $order_uniqid );
 		if ( null !== $this->woocommerce && 'not_exist' === $result ) {
 			$data = array(
@@ -216,7 +220,10 @@ class TeeSight_Sync_Order {
 				);
 			}
 			$result = $this->woocommerce->post( 'orders', $data );
+			update_post_meta( $order_id, '_order_synced', 'yes' );
+			return true;
 		}
+		return false;
 	}
 }
 

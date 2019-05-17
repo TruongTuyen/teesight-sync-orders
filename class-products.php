@@ -1,7 +1,7 @@
 <?php
 class TeeSight_Sync_Order_Product {
 	public function __construct() {
-		add_action( 'init', array( $this, 'ajax_rename_product_design' ) );
+		//add_action( 'init', array( $this, 'ajax_rename_product_design' ) );
 	}
 
 	public function get_product_has_design() {
@@ -27,16 +27,14 @@ class TeeSight_Sync_Order_Product {
 
 	public function ajax_rename_product_design() {
 		$ids = $this->get_product_has_design();
-		echo '<pre>IDs';
-		print_r( $ids );
-		echo '</pre>';
+		
 		$uploaddir = wp_upload_dir();
 		foreach ( $ids as $p_id => $img_id ) {
 			$exists_image_url = wp_get_attachment_url( $img_id );
 			$wp_filetype = wp_check_filetype( basename( $exists_image_url ), null );
 			$product = wc_get_product( $p_id );
 			$sku = $product->get_sku();
-			$ext = '.jpg';
+			$ext = $wp_filetype['ext'];
 
 			$uploadfile = $uploaddir['path'] . '/' . $sku;
 

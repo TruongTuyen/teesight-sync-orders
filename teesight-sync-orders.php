@@ -48,7 +48,7 @@ function teesight_sync_order_upload_image_as_attachment( $image_url = '', $post_
 		return $id;
 	}
 }
-
+require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'class-products.php';
 require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'class-option-page.php';
 require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'vendor/autoload.php';
 require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'vendor/CMB2/init.php';

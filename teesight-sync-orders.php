@@ -3,7 +3,7 @@
  * Plugin Name: TeeSight Sync Orders
  * Plugin URI: http://wooimport.local
  * Description: Remote sync orders
- * Version: 0.1.3.1
+ * Version: 0.1.3.2
  * Author: teesight
  * Author URI: http://wooimport.local
  * Text Domain: teesight-sync-order

@@ -18,6 +18,30 @@ class TeeSightOrders {
 			'dashicons-admin-generic',
 			76
 		);
+
+		add_submenu_page(
+			'teesight-orders',
+			esc_html__( 'Export Products', 'teesight-sync-orders' ),
+			esc_html__( 'Export Products', 'teesight-sync-orders' ),
+			'manage_options',
+			'teesight-export-products',
+			array( $this, 'orders_create_export_page' ),
+			'dashicons-admin-generic',
+			1
+		);
+	}
+
+	public function orders_create_export_page() {
+		?>
+		<div class="wrap">
+			<h2><?php esc_html_e( 'Export product to CSV', 'teesight' ); ?></h2>
+			<form action="<?php echo admin_url( 'admin.php' ); ?>?page=teesight-export-products" method="GET">
+				<input type="hidden" name="page" value="teesight-export-products" />
+				<input type="hidden" name="teesight_action" value="export_product_csv" />
+				<button type="submit" class="button button-primary"><?php esc_html_e( 'Export product', 'teesight' ); ?></button>
+			</form>
+		</div>
+		<?php
 	}
 
 	public function orders_create_admin_page() {

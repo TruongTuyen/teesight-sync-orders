@@ -57,7 +57,7 @@ require_once teesight_sync_order_get_var( 'plugin_dir' ) . 'class-rest-api.php';
 
 class TeeSight_Sync_Order_Start {
 	public function __construct() {
-		add_action( 'cmb2_admin_init', array( $this, 'register_product_metabox' ) );
+
 		add_filter( 'woocommerce_rest_pre_insert_product_object', array( $this, 'rest_update_meta' ), PHP_INT_MAX, 2 );
 	}
 

@@ -23,6 +23,16 @@ class TeeSight_Sync_Order {
 		add_filter( 'http_request_host_is_external', array( $this, 'allow_custom_host' ), 10, 3 );
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
+		//add_action( 'teesight_sync_orders_hourly_event', array( $this, '_conjob_check_order_not_synced' ) );
+		add_action( 'init', array( $this, '_conjob_check_order_not_synced' ) );
+	}
+
+	public function _conjob_check_order_not_synced() {
+		$args = array(
+			'status' => 'processing',
+		);
+		// _order_synced = yes
+		$orders = wc_get_orders( $args );
 	}
 
 	public function detect_order_bulk_action( $id, $new_status ) {

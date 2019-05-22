@@ -95,3 +95,20 @@ class TeeSight_Sync_Order_Start {
 
 new TeeSight_Sync_Order_Start();
 // Github Personal access tokens: 51a1b6738968d42118aef6dd279886d6b819dfc4
+register_activation_hook( __FILE__, 'teesight_sync_orders_register_activation' );
+
+function teesight_sync_orders_register_activation() {
+	if ( ! wp_next_scheduled( 'teesight_sync_orders_hourly_event' ) ) {
+		wp_schedule_event( time(), 'hourly', 'teesight_sync_orders_hourly_event' );
+	}
+}
+
+register_deactivation_hook( __FILE__, 'teesight_sync_orders_register_deactivation' );
+
+function teesight_sync_orders_register_deactivation() {
+	wp_clear_scheduled_hook( 'teesight_sync_orders_hourly_event' );
+}
+
+
+
+

@@ -160,7 +160,7 @@ class TeeSight_Sync_Order {
 			$this->update_order_uniqid( $order_id );
 		}
 		if ( ! $is_manual ) {
-			if ( 'processing' !== $order->status ) {
+			if ( 'processing' !== $order->get_status() ) {
 				return false;
 			}
 		}

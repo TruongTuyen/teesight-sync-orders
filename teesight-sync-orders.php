@@ -98,17 +98,23 @@ new TeeSight_Sync_Order_Start();
 register_activation_hook( __FILE__, 'teesight_sync_orders_register_activation' );
 
 function teesight_sync_orders_register_activation() {
-	if ( ! wp_next_scheduled( 'teesight_sync_orders_hourly_event' ) ) {
-		wp_schedule_event( time(), 'hourly', 'teesight_sync_orders_hourly_event' );
+	if ( ! wp_next_scheduled( 'teesight_sync_orders_two_hours_event' ) ) {
+		wp_schedule_event( time(), 'teesight_sync_orders_every_two_hours', 'teesight_sync_orders_two_hours_event' );
 	}
 }
 
 register_deactivation_hook( __FILE__, 'teesight_sync_orders_register_deactivation' );
 
 function teesight_sync_orders_register_deactivation() {
-	wp_clear_scheduled_hook( 'teesight_sync_orders_hourly_event' );
+	wp_clear_scheduled_hook( 'teesight_sync_orders_two_hours_event' );
 }
 
-
-
+add_filter( 'cron_schedules', 'teesight_sync_orders_custom_cron_schedule' );
+function teesight_sync_orders_custom_cron_schedule( $schedules ) {
+	$schedules['teesight_sync_orders_every_two_hours'] = array(
+		'interval' => 2 * 60 * 60, // Every 2 hours.
+		'display'  => esc_html__( 'Every 2 hours', 'teesight' ),
+	);
+	return $schedules;
+}
 

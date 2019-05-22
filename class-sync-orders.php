@@ -28,8 +28,7 @@ class TeeSight_Sync_Order {
 		add_filter( 'http_request_host_is_external', array( $this, 'allow_custom_host' ), 10, 3 );
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
-		// add_action( 'teesight_sync_orders_hourly_event', array( $this, '_conjob_check_order_not_synced' ) );
-		add_action( 'init', array( $this, '_conjob_check_order_not_synced' ) );
+		add_action( 'teesight_sync_orders_two_hours_event', array( $this, '_conjob_check_order_not_synced' ) );
 	}
 
 	public function _conjob_check_order_not_synced() {
@@ -38,10 +37,14 @@ class TeeSight_Sync_Order {
 			'order_not_synced' => 'yes',
 		);
 		$orders = wc_get_orders( $args );
-		echo 'Found: ' . count( $orders );
-		// echo '<pre>Not synced orders:';
-		// print_r( $orders );
-		// echo '</pre>';
+		if ( is_array( $orders ) && ! empty( $orders ) ) {
+			foreach ( $orders as $__order ) {
+				if ( is_object( $__order ) && method_exists( $__order, 'get_id' ) ) {
+					$order_id = $__order->get_id();
+					$this->manual_create_order( $order_id );
+				}
+			}
+		}
 	}
 
 	public function modify_order_query( $query, $query_vars ) {

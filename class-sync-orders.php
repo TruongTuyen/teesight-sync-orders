@@ -20,10 +20,13 @@ class TeeSight_Sync_Order {
 				)
 			);
 		}
+		add_action( 'admin_init', array( $this, 'maybe_re_sync_order' ) );
+		add_filter( 'manage_edit-shop_order_columns', array( $this, 'add_custom_table_orders_list_columns' ) );
+		add_action( 'manage_shop_order_posts_custom_column', array( $this, 'add_custom_table_orders_list_columns_content' ) );
 		add_filter( 'http_request_host_is_external', array( $this, 'allow_custom_host' ), 10, 3 );
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
-		//add_action( 'teesight_sync_orders_hourly_event', array( $this, '_conjob_check_order_not_synced' ) );
+		// add_action( 'teesight_sync_orders_hourly_event', array( $this, '_conjob_check_order_not_synced' ) );
 		add_action( 'init', array( $this, '_conjob_check_order_not_synced' ) );
 	}
 
@@ -59,9 +62,10 @@ class TeeSight_Sync_Order {
 			update_post_meta( $order_id, 'order_create_manual_status_remote_url', $this->remote_site_url );
 			$result = $this->remote_check_order_exists( $order_uniqid );
 			if ( 'not_exist' === $result ) {
-				$this->sync_order( $order_id, true );
+				return $this->sync_order( $order_id, true );
 			}
 		}
+		return false;
 	}
 
 	public function remote_check_order_exists( $order_uniqid ) {
@@ -160,6 +164,7 @@ class TeeSight_Sync_Order {
 					'postcode' => $order->get_shipping_postcode(),
 					'country' => $order->get_shipping_country(),
 				),
+				'line_items' => array(),
 			);
 
 			$product_site_slug = '';
@@ -167,29 +172,42 @@ class TeeSight_Sync_Order {
 				$product = $item->get_product();
 				$product_id = null;
 				$product_sku = null;
-				if ( is_object( $product ) ) {
+				if ( is_object( $product ) && method_exists( $product, 'get_id' ) ) {
 					$product_id = $product->get_id();
 					$product_sku = $product->get_sku();
 					$_p_id = $product_id;
+					$_p_variation_id = 0;
 					if ( ! empty( $item->get_variation_id() ) && ( 'product_variation' === $product->post_type ) ) {
 						$_p_id = $product->get_parent_id();
+						$_p_variation_id = $product_id;
 					}
 					if ( get_post_meta( $_p_id, '_product_site_slug', true ) ) {
 						$product_site_slug = get_post_meta( $_p_id, '_product_site_slug', true );
 					}
+
+					$__product_base_supplier = get_post_meta( $_p_id, '_product_base_supplier', true );
+					$__product_origin_unique_id = get_post_meta( $_p_id, '_product_origin_unique_id', true );
+					if ( ! empty( $__product_origin_unique_id ) && ! empty( $__product_base_supplier ) && ! empty( $product_site_slug ) ) {
+						$data['line_items'][] = array(
+							'name' => $item['name'],
+							'product_id' => $_p_id,
+							'variation_id' => $_p_variation_id,
+							'quantity' => wc_stock_amount( $item['qty'] ),
+							'subtotal' => (string) wc_format_decimal( $order->get_line_subtotal( $item, false, false ), $deep ),
+							'subtotal_tax' => (string) wc_format_decimal( $item['line_subtotal_tax'], $deep ),
+							'total' => (string) wc_format_decimal( $order->get_line_total( $item, false, false ), $deep ),
+							'total_tax' => (string) wc_format_decimal( $item['line_tax'], $deep ),
+							'price' => (string) wc_format_decimal( $order->get_item_total( $item, false, false ), $deep ),
+							'sku' => (string) $product_sku,
+						);
+					}
 				}
-				$data['line_items'][] = array(
-					'name' => $item['name'],
-					'product_id' => ( ! empty( $item->get_variation_id() ) && ( 'product_variation' === $product->post_type ) ) ? $product->get_parent_id() : $product_id,
-					'variation_id' => ( ! empty( $item->get_variation_id() ) && ( 'product_variation' === $product->post_type ) ) ? $product_id : 0,
-					'quantity' => wc_stock_amount( $item['qty'] ),
-					'subtotal' => (string) wc_format_decimal( $order->get_line_subtotal( $item, false, false ), $deep ),
-					'subtotal_tax' => (string) wc_format_decimal( $item['line_subtotal_tax'], $deep ),
-					'total' => (string) wc_format_decimal( $order->get_line_total( $item, false, false ), $deep ),
-					'total_tax' => (string) wc_format_decimal( $item['line_tax'], $deep ),
-					'price' => (string) wc_format_decimal( $order->get_item_total( $item, false, false ), $deep ),
-					'sku' => (string) $product_sku,
-				);
+			}
+
+			if ( is_array( $data['line_items'] ) && empty( $data['line_items'] ) ) {
+				// Line item not contain any product from teesight -> ignore.
+				update_post_meta( $order_id, '_ignore_from_teesight', 'yes' );
+				return false;
 			}
 
 			foreach ( $order->get_shipping_methods() as $shipping_item_id => $shipping_item ) {
@@ -229,11 +247,86 @@ class TeeSight_Sync_Order {
 					'value' => 'true',
 				);
 			}
-			$result = $this->woocommerce->post( 'orders', $data );
-			update_post_meta( $order_id, '_order_synced', 'yes' );
-			return true;
+			if ( is_array( $data['line_items'] ) && ! empty( $data['line_items'] ) ) {
+				$result = $this->woocommerce->post( 'orders', $data );
+				if ( is_object( $result ) && property_exists( $result, 'id' ) ) {
+					update_post_meta( $order_id, '_order_synced', 'yes' );
+					return true;
+				}
+			}
 		}
 		return false;
+	}
+
+	public function add_custom_table_orders_list_columns( $columns ) {
+		$columns['ts_synced'] = esc_html__( 'Synced', 'teesight' );
+		return $columns;
+	}
+
+	public function add_custom_table_orders_list_columns_content( $column ) {
+		global $post;
+		if ( 'ts_synced' === $column ) {
+			$is_synced = get_post_meta( $post->ID, '_order_synced', true );
+			if ( 'yes' == $is_synced ) {
+				$icon = '<span style="color: #5b841b;"><span class="dashicons dashicons-yes-alt"></span></span>';
+			} else {
+				$icon = '<span style="color:#f44336;" class="dashicons dashicons-dismiss"></span>';
+				$is_ignored = get_post_meta( $post->ID, '_ignore_from_teesight', true );
+				if ( 'yes' === $is_ignored ) {
+					$icon = '<span style="color: #f44336; font-weight:bold;">Ignored</span>';
+				} else {
+					// $order_id = $post->ID;
+					// $order = wc_get_order( $order_id );
+					// $order_status = $order->get_status();
+					// if ( 'processing' == $order_status ) {
+					// 	$resync_url = add_query_arg(
+					// 		array(
+					// 			'post_type' => 'shop_order',
+					// 			'ts_action' => 're-sync-order',
+					// 			'order_id' => $order_id,
+					// 		),
+					// 		admin_url( 'edit.php' )
+					// 	);
+					// 	$icon .= '<a style="display:inline-block; margin-left:10px;" href="' . esc_url( $resync_url ) . '">
+					// 		<span style="color: #5b841b;">		
+					// 			<span class="dashicons dashicons-update"></span>
+					// 		</span>
+					// 	</a>';
+					// }
+				}
+			}
+			echo $icon;
+		}
+	}
+
+	public function message_sync_success() {
+		?>
+		<div class="notice notice-success is-dismissible">
+			<p><?php _e( 'Done!', 'sample-text-domain' ); ?></p>
+		</div>
+		<?php
+	}
+
+	public function message_sync_fail() {
+		?>
+		<div class="notice notice-error is-dismissible">
+			<p><?php _e( 'Fail!', 'sample-text-domain' ); ?></p>
+		</div>
+		<?php
+	}
+
+	public function maybe_re_sync_order() {
+		// if ( isset( $_GET['ts_action'] ) && 're-sync-order' === $_GET['ts_action'] ) {
+		// 	if ( isset( $_GET['order_id'] ) && ! empty( $_GET['order_id'] ) ) {
+		// 		$order_id = sanitize_text_field( wp_unslash( $_GET['order_id'] ) );
+		// 		$result = $this->manual_create_order( $order_id );
+		// 		if ( $result ) {
+		// 			add_action( 'admin_notices', array( $this, 'message_sync_success' ) );
+		// 		} else {
+		// 			add_action( 'admin_notices', array( $this, 'message_sync_fail' ) );
+		// 		}
+		// 	}
+		// }
 	}
 }
 

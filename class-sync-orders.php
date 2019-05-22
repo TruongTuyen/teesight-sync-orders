@@ -20,6 +20,8 @@ class TeeSight_Sync_Order {
 				)
 			);
 		}
+		add_filter( 'woocommerce_order_data_store_cpt_get_orders_query', array( $this, 'modify_order_query' ), 10, 2 );
+		add_action( 'admin_notices', array( $this, 'admin_orders_notice' ) );
 		add_action( 'admin_init', array( $this, 'maybe_re_sync_order' ) );
 		add_filter( 'manage_edit-shop_order_columns', array( $this, 'add_custom_table_orders_list_columns' ) );
 		add_action( 'manage_shop_order_posts_custom_column', array( $this, 'add_custom_table_orders_list_columns_content' ) );
@@ -33,9 +35,46 @@ class TeeSight_Sync_Order {
 	public function _conjob_check_order_not_synced() {
 		$args = array(
 			'status' => 'processing',
+			'order_not_synced' => 'yes',
 		);
-		// _order_synced = yes
 		$orders = wc_get_orders( $args );
+		echo 'Found: ' . count( $orders );
+		// echo '<pre>Not synced orders:';
+		// print_r( $orders );
+		// echo '</pre>';
+	}
+
+	public function modify_order_query( $query, $query_vars ) {
+		if ( isset( $query_vars['order_not_synced'] ) && 'yes' == $query_vars['order_not_synced'] ) {
+			$query['meta_query'][] = array(
+				'relation' => 'AND',
+				array(
+					'relation' => 'OR',
+					array(
+						'key' => '_order_synced',
+						'value' => 'yes',
+						'compare' => '!=',
+					),
+					array(
+						'key' => '_order_synced',
+						'compare' => 'NOT EXISTS',
+					),
+				),
+				array(
+					'relation' => 'OR',
+					array(
+						'key' => '_ignore_from_teesight',
+						'value' => 'yes',
+						'compare' => '!=',
+					),
+					array(
+						'key' => '_ignore_from_teesight',
+						'compare' => 'NOT EXISTS',
+					),
+				),
+			);
+		}
+		return $query;
 	}
 
 	public function detect_order_bulk_action( $id, $new_status ) {
@@ -248,10 +287,12 @@ class TeeSight_Sync_Order {
 				);
 			}
 			if ( is_array( $data['line_items'] ) && ! empty( $data['line_items'] ) ) {
-				$result = $this->woocommerce->post( 'orders', $data );
-				if ( is_object( $result ) && property_exists( $result, 'id' ) ) {
-					update_post_meta( $order_id, '_order_synced', 'yes' );
-					return true;
+				if ( is_object( $this->woocommerce ) && method_exists( $this->woocommerce, 'post' ) ) {
+					$result = $this->woocommerce->post( 'orders', $data );
+					if ( is_object( $result ) && property_exists( $result, 'id' ) ) {
+						update_post_meta( $order_id, '_order_synced', 'yes' );
+						return true;
+					}
 				}
 			}
 		}
@@ -275,58 +316,79 @@ class TeeSight_Sync_Order {
 				if ( 'yes' === $is_ignored ) {
 					$icon = '<span style="color: #f44336; font-weight:bold;">Ignored</span>';
 				} else {
-					// $order_id = $post->ID;
-					// $order = wc_get_order( $order_id );
-					// $order_status = $order->get_status();
-					// if ( 'processing' == $order_status ) {
-					// 	$resync_url = add_query_arg(
-					// 		array(
-					// 			'post_type' => 'shop_order',
-					// 			'ts_action' => 're-sync-order',
-					// 			'order_id' => $order_id,
-					// 		),
-					// 		admin_url( 'edit.php' )
-					// 	);
-					// 	$icon .= '<a style="display:inline-block; margin-left:10px;" href="' . esc_url( $resync_url ) . '">
-					// 		<span style="color: #5b841b;">		
-					// 			<span class="dashicons dashicons-update"></span>
-					// 		</span>
-					// 	</a>';
-					// }
+					$order_id = $post->ID;
+					$order = wc_get_order( $order_id );
+					$order_status = $order->get_status();
+					if ( 'processing' == $order_status ) {
+						$resync_url = add_query_arg(
+							array(
+								'post_type' => 'shop_order',
+								'ts_action' => 're-sync-order',
+								'order_id' => $order_id,
+							),
+							admin_url( 'edit.php' )
+						);
+						$icon .= '<a style="display:inline-block; margin-left:10px;" href="' . esc_url( $resync_url ) . '">
+							<span style="color: #5b841b;">		
+								<span class="dashicons dashicons-update"></span>
+							</span>
+						</a>';
+					}
 				}
 			}
 			echo $icon;
 		}
 	}
 
-	public function message_sync_success() {
+	public function admin_orders_notice() {
+		if ( isset( $_GET['result_code'] ) && ! empty( $_GET['result_code'] ) ) {
+			switch ( $_GET['result_code'] ) {
+				case 'sync_success':
+					$message = esc_html__( 'Your order synced', 'teesight' );
+					$this->message_sync_success( $message );
+					break;
+				case 'sync_fail':
+					$message = esc_html__( 'Could not sync your order, please try again', 'teesight' );
+					$this->message_sync_fail( $message );
+					break;
+			}
+		}
+	}
+
+	public function message_sync_success( $message = '' ) {
 		?>
 		<div class="notice notice-success is-dismissible">
-			<p><?php _e( 'Done!', 'sample-text-domain' ); ?></p>
+			<p><?php echo esc_html( $message ); ?></p>
 		</div>
 		<?php
 	}
 
-	public function message_sync_fail() {
+	public function message_sync_fail( $message = '' ) {
 		?>
 		<div class="notice notice-error is-dismissible">
-			<p><?php _e( 'Fail!', 'sample-text-domain' ); ?></p>
+			<p><?php echo esc_html( $message ); ?></p>
 		</div>
 		<?php
 	}
 
 	public function maybe_re_sync_order() {
-		// if ( isset( $_GET['ts_action'] ) && 're-sync-order' === $_GET['ts_action'] ) {
-		// 	if ( isset( $_GET['order_id'] ) && ! empty( $_GET['order_id'] ) ) {
-		// 		$order_id = sanitize_text_field( wp_unslash( $_GET['order_id'] ) );
-		// 		$result = $this->manual_create_order( $order_id );
-		// 		if ( $result ) {
-		// 			add_action( 'admin_notices', array( $this, 'message_sync_success' ) );
-		// 		} else {
-		// 			add_action( 'admin_notices', array( $this, 'message_sync_fail' ) );
-		// 		}
-		// 	}
-		// }
+		if ( isset( $_GET['ts_action'] ) && 're-sync-order' === $_GET['ts_action'] ) {
+			if ( isset( $_GET['order_id'] ) && ! empty( $_GET['order_id'] ) ) {
+				$order_id = sanitize_text_field( wp_unslash( $_GET['order_id'] ) );
+				$result = $this->manual_create_order( $order_id );
+				$redirect_args = array(
+					'post_type' => 'shop_order',
+				);
+				if ( $result ) {
+					$redirect_args['result_code'] = 'sync_success';
+				} else {
+					$redirect_args['result_code'] = 'sync_fail';
+				}
+				$redirect_url = add_query_arg( $redirect_args, admin_url( 'edit.php' ) );
+				wp_redirect( $redirect_url );
+				die;
+			}
+		}
 	}
 }
 

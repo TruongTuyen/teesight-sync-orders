@@ -292,7 +292,7 @@ class TeeSight_Sync_Order {
 					'value' => 'true',
 				);
 			}
-			if ( is_array( $data['line_items'] ) && ! empty( $data['line_items'] ) ) {
+			if ( ! empty( $data['line_items'] ) ) {
 				if ( is_object( $this->woocommerce ) && method_exists( $this->woocommerce, 'post' ) ) {
 					$result = $this->woocommerce->post( 'orders', $data );
 					update_post_meta( $order_id, '_order_synced', 'yes' );

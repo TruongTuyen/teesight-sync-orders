@@ -54,7 +54,7 @@ class TeeSight_Sync_Order {
 			);
 			foreach ( $list_ids as $id ) {
 				$order_uniqid = get_post_meta( $id, '_origin_order_uniqid', true );
-				echo sprintf('Order #%s --> synced: %s | check remote: %s <br/>', $id, get_post_meta( $id, '_order_synced', true ), $this->remote_check_order_exists( $order_uniqid ) )
+				echo sprintf('Order #%s --> synced: %s | check remote: %s <br/>', $id, get_post_meta( $id, '_order_synced', true ), $this->remote_check_order_exists( $order_uniqid ) );
 			}
 		}
 	}

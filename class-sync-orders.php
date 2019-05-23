@@ -36,12 +36,6 @@ class TeeSight_Sync_Order {
 	public function dev_debug() {
 		if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
 			$list_ids = array(
-				'18187',
-				'18178',
-				'18173',
-				'18168',
-				'18164',
-				'18160',
 				'18155',
 				'18151',
 				'18143',
@@ -50,14 +44,11 @@ class TeeSight_Sync_Order {
 				'18129',
 				'18121',
 				'18117',
-				'1810',
 				'18093',
-				'18088',
-				'18082',
 			);
 			foreach ( $list_ids as $id ) {
 				$order_uniqid = get_post_meta( $id, '_origin_order_uniqid', true );
-				echo sprintf( 'Order #%s --> synced: %s | check remote: %s <br/> | uniqid: %s', $id, get_post_meta( $id, '_order_synced', true ), $this->remote_check_order_exists( $order_uniqid ), $order_uniqid );
+				echo sprintf( 'Order #%s --> synced: %s | check remote: %s | uniqid: %s <br/> ', $id, get_post_meta( $id, '_order_synced', true ), $this->remote_check_order_exists( $order_uniqid ), $order_uniqid );
 			}
 		}
 	}

@@ -36,6 +36,9 @@ class TeeSight_Sync_Order {
 	public function dev_debug() {
 		if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
 			$list_ids = array(
+				'18187',
+				'18178',
+				'18173',
 				'18168',
 				'18164',
 				'18160',

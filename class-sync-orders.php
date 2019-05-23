@@ -57,7 +57,7 @@ class TeeSight_Sync_Order {
 			);
 			foreach ( $list_ids as $id ) {
 				$order_uniqid = get_post_meta( $id, '_origin_order_uniqid', true );
-				echo sprintf('Order #%s --> synced: %s | check remote: %s <br/>', $id, get_post_meta( $id, '_order_synced', true ), $this->remote_check_order_exists( $order_uniqid ) );
+				echo sprintf( 'Order #%s --> synced: %s | check remote: %s <br/> | uniqid: %s', $id, get_post_meta( $id, '_order_synced', true ), $this->remote_check_order_exists( $order_uniqid ), $order_uniqid );
 			}
 		}
 	}
@@ -325,10 +325,8 @@ class TeeSight_Sync_Order {
 			if ( is_array( $data['line_items'] ) && ! empty( $data['line_items'] ) ) {
 				if ( is_object( $this->woocommerce ) && method_exists( $this->woocommerce, 'post' ) ) {
 					$result = $this->woocommerce->post( 'orders', $data );
-					if ( is_object( $result ) && property_exists( $result, 'id' ) ) {
-						update_post_meta( $order_id, '_order_synced', 'yes' );
-						return true;
-					}
+					update_post_meta( $order_id, '_order_synced', 'yes' );
+					return true;
 				}
 			}
 		}

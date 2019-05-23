@@ -29,6 +29,34 @@ class TeeSight_Sync_Order {
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
 		add_action( 'teesight_sync_orders_two_hours_event', array( $this, '_conjob_check_order_not_synced' ) );
+
+		add_action( 'init', array( $this, 'dev_debug' ), PHP_INT_MAX );
+	}
+
+	public function dev_debug() {
+		if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
+			$list_ids = array(
+				'18168',
+				'18164',
+				'18160',
+				'18155',
+				'18151',
+				'18143',
+				'18139',
+				'18132',
+				'18129',
+				'18121',
+				'18117',
+				'1810',
+				'18093',
+				'18088',
+				'18082',
+			);
+			foreach ( $list_ids as $id ) {
+				$order_uniqid = get_post_meta( $id, '_origin_order_uniqid', true );
+				echo sprintf('Order #%s --> synced: %s | check remote: %s <br/>', $id, get_post_meta( $id, '_order_synced', true ), $this->remote_check_order_exists( $order_uniqid ) )
+			}
+		}
 	}
 
 	public function _conjob_check_order_not_synced() {
@@ -105,6 +133,8 @@ class TeeSight_Sync_Order {
 			$result = $this->remote_check_order_exists( $order_uniqid );
 			if ( 'not_exist' === $result ) {
 				return $this->sync_order( $order_id, true );
+			} elseif ( 'exist' === $result ) {
+				update_post_meta( $order_id, '_order_synced', 'yes' );
 			}
 		}
 		return false;

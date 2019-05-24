@@ -147,6 +147,24 @@ class TeeSight_Sync_Order {
 			print_r( $result );
 			echo '</pre>';
 
+			$response2 = wp_remote_get( esc_url_raw( $rest_api_link ) );
+			$api_response = json_decode( wp_remote_retrieve_body( $response2 ), true );
+
+			echo '<pre>Response result 2:';
+			print_r( $api_response );
+			echo '</pre>';
+
+			$curlSession = curl_init();
+			curl_setopt( $curlSession, CURLOPT_URL, $rest_api_link );
+			curl_setopt( $curlSession, CURLOPT_BINARYTRANSFER, true );
+			curl_setopt( $curlSession, CURLOPT_RETURNTRANSFER, true );
+
+			$jsonData = json_decode( curl_exec( $curlSession ) );
+			curl_close( $curlSession );
+
+			echo '<pre>Response CURL:';
+			print_r( $jsonData );
+			echo '</pre>';
 		}
 
 		if ( is_array( $result ) && isset( $result['is_exist'] ) && 'true' === $result['is_exist'] ) {

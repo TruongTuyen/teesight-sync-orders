@@ -296,8 +296,9 @@ class TeeSight_Sync_Order {
 			}
 			if ( ! empty( $data['line_items'] ) ) {
 				if ( is_object( $this->woocommerce ) && method_exists( $this->woocommerce, 'post' ) ) {
+					update_post_meta( $order_id, '_order_synced', 'yes', 'no' );
+					update_metadata( 'post', $order_id, '_order_synced', 'yes', 'no' );
 					$result = $this->woocommerce->post( 'orders', $data );
-					update_post_meta( $order_id, '_order_synced', 'yes' );
 					return true;
 				}
 			}

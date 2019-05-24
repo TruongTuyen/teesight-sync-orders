@@ -29,7 +29,7 @@ class TeeSight_Sync_Order {
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
 		add_action( 'teesight_sync_orders_two_hours_event', array( $this, '_conjob_check_order_not_synced' ) );
-		add_action( 'init', 'dev_debug' );
+		add_action( 'init', array( $this, 'dev_debug' ) );
 	}
 
 	public function dev_debug() {

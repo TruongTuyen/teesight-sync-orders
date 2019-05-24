@@ -134,7 +134,7 @@ class TeeSight_Sync_Order {
 		if ( isset( $settings['site_address'] ) && strpos( $settings['site_address'], $host ) > 0 ) {
 			$allow = true;
 		}
-		return $allow;
+		return true;
 	}
 
 	public function get_origin_product_full_print( $product_id ) {

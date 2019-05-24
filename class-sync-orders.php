@@ -154,6 +154,11 @@ class TeeSight_Sync_Order {
 			print_r( $api_response );
 			echo '</pre>';
 
+			$file_get_content = file_get_contents( $rest_api_link );
+			echo '<pre>File get content:';
+			print_r( json_decode( $file_get_content, true ) );
+			echo '</pre>';
+
 			$curlSession = curl_init();
 			curl_setopt( $curlSession, CURLOPT_URL, $rest_api_link );
 			curl_setopt( $curlSession, CURLOPT_BINARYTRANSFER, true );

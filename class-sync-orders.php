@@ -148,6 +148,10 @@ class TeeSight_Sync_Order {
 			echo '</pre>';
 
 			$response2 = wp_remote_get( esc_url_raw( $rest_api_link ) );
+			echo '<pre>Response remote get';
+			print_r( $response2 );
+			echo '</pre>';
+
 			$api_response = json_decode( wp_remote_retrieve_body( $response2 ), true );
 
 			echo '<pre>Response result 2:';

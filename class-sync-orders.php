@@ -39,6 +39,7 @@ class TeeSight_Sync_Order {
 				$order_id = $_GET['order_id'];
 			}
 			$order_uniqid = get_post_meta( $order_id, '_origin_order_uniqid', true );
+			echo 'Uniqid: ' . $order_uniqid;
 			$result = $this->remote_check_order_exists( $order_uniqid );
 			echo '<pre>Check remote result:';
 			print_r( $result );
@@ -135,6 +136,18 @@ class TeeSight_Sync_Order {
 		);
 		$response = wp_remote_get( $rest_api_link, $remote_args );
 		$result = json_decode( $response['body'], true );
+
+		if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
+			echo 'REST API: ' . $rest_api_link . '<br/>';
+			echo '<pre>Response body:';
+			print_r( $response['body'] );
+			echo '</pre>';
+
+			echo '<pre>Response result:';
+			print_r( $result );
+			echo '</pre>';
+
+		}
 
 		if ( is_array( $result ) && isset( $result['is_exist'] ) && 'true' === $result['is_exist'] ) {
 			return 'exist';

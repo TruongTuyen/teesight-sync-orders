@@ -29,22 +29,6 @@ class TeeSight_Sync_Order {
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
 		add_action( 'teesight_sync_orders_two_hours_event', array( $this, '_conjob_check_order_not_synced' ) );
-		add_action( 'init', array( $this, 'debug_check_remote_order' ) );
-	}
-
-	public function debug_check_remote_order() {
-		if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
-			$order_id = 18612;
-			if ( isset( $_GET['order_id'] ) ) {
-				$order_id = $_GET['order_id'];
-			}
-			$order_uniqid = get_post_meta( $order_id, '_origin_order_uniqid', true );
-			echo 'Uniqid: ' . $order_uniqid;
-			$result = $this->remote_check_order_exists( $order_uniqid );
-			echo '<pre>Check remote result:';
-			print_r( $result );
-			echo '</pre>';
-		}
 	}
 
 	public function _conjob_check_order_not_synced() {
@@ -136,45 +120,6 @@ class TeeSight_Sync_Order {
 		);
 		$response = wp_remote_get( $rest_api_link, $remote_args );
 		$result = json_decode( $response['body'], true );
-
-		if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
-			echo 'REST API: ' . $rest_api_link . '<br/>';
-			echo '<pre>Response body:';
-			print_r( $response['body'] );
-			echo '</pre>';
-
-			echo '<pre>Response result:';
-			print_r( $result );
-			echo '</pre>';
-
-			$response2 = wp_remote_get( esc_url_raw( $rest_api_link ) );
-			echo '<pre>Response remote get';
-			print_r( $response2 );
-			echo '</pre>';
-
-			$api_response = json_decode( wp_remote_retrieve_body( $response2 ), true );
-
-			echo '<pre>Response result 2:';
-			print_r( $api_response );
-			echo '</pre>';
-
-			$file_get_content = file_get_contents( $rest_api_link );
-			echo '<pre>File get content:';
-			print_r( json_decode( $file_get_content, true ) );
-			echo '</pre>';
-
-			$curlSession = curl_init();
-			curl_setopt( $curlSession, CURLOPT_URL, $rest_api_link );
-			curl_setopt( $curlSession, CURLOPT_BINARYTRANSFER, true );
-			curl_setopt( $curlSession, CURLOPT_RETURNTRANSFER, true );
-
-			$jsonData = json_decode( curl_exec( $curlSession ) );
-			curl_close( $curlSession );
-
-			echo '<pre>Response CURL:';
-			print_r( $jsonData );
-			echo '</pre>';
-		}
 
 		if ( is_array( $result ) && isset( $result['is_exist'] ) && 'true' === $result['is_exist'] ) {
 			return 'exist';

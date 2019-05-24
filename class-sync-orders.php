@@ -29,23 +29,7 @@ class TeeSight_Sync_Order {
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
 		add_action( 'teesight_sync_orders_two_hours_event', array( $this, '_conjob_check_order_not_synced' ) );
-		add_action( 'init', array( $this, 'dev_debug' ) );
-	}
 
-	public function dev_debug() {
-		if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
-			if ( isset( $_GET['ts_action'] ) ) {
-				if ( 'remote' == $_GET['ts_action'] ) {
-					$order_id = 18512;
-					$order_uniqid = get_post_meta( $order_id, '_origin_order_uniqid', true );
-					$result = $this->remote_check_order_exists( $order_uniqid );
-
-					echo '<pre>:';
-					print_r( $result );
-					echo '</pre>';
-				}
-			}
-		}
 	}
 
 	public function _conjob_check_order_not_synced() {
@@ -121,10 +105,6 @@ class TeeSight_Sync_Order {
 			update_post_meta( $order_id, 'order_create_manual_status_remote_url', $this->remote_site_url );
 			$result = $this->remote_check_order_exists( $order_uniqid );
 
-			if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
-				echo 'Remote result: ' . $result;
-			}
-
 			if ( 'not_exist' === $result ) {
 				return $this->sync_order( $order_id, true );
 			} elseif ( 'exist' === $result ) {
@@ -141,16 +121,6 @@ class TeeSight_Sync_Order {
 		);
 		$response = wp_remote_get( $rest_api_link, $remote_args );
 		$result = json_decode( $response['body'], true );
-
-		if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
-			echo '<pre>result decocded:';
-			print_r( $result );
-			echo '</pre>';
-
-			echo '<pre>result origin:';
-			print_r( $response['body'] );
-			echo '</pre>';
-		}
 
 		if ( is_array( $result ) && isset( $result['is_exist'] ) && 'true' === $result['is_exist'] ) {
 			return 'exist';

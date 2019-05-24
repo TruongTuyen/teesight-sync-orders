@@ -120,6 +120,11 @@ class TeeSight_Sync_Order {
 			update_post_meta( $order_id, 'order_create_manual_status', $order_status );
 			update_post_meta( $order_id, 'order_create_manual_status_remote_url', $this->remote_site_url );
 			$result = $this->remote_check_order_exists( $order_uniqid );
+
+			if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
+				echo 'Remote result: ' . $result;
+			}
+
 			if ( 'not_exist' === $result ) {
 				return $this->sync_order( $order_id, true );
 			} elseif ( 'exist' === $result ) {
@@ -136,6 +141,17 @@ class TeeSight_Sync_Order {
 		);
 		$response = wp_remote_get( $rest_api_link, $remote_args );
 		$result = json_decode( $response['body'], true );
+
+		if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
+			echo '<pre>result decocded:';
+			print_r( $result );
+			echo '</pre>';
+
+			echo '<pre>result origin:';
+			print_r( $response['body'] );
+			echo '</pre>';
+		}
+
 		if ( is_array( $result ) && isset( $result['is_exist'] ) && 'true' === $result['is_exist'] ) {
 			return 'exist';
 		} elseif ( is_array( $result ) && isset( $result['is_exist'] ) && 'fail' === $result['is_exist'] ) {

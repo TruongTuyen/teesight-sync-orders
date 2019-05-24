@@ -29,7 +29,23 @@ class TeeSight_Sync_Order {
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
 		add_action( 'teesight_sync_orders_two_hours_event', array( $this, '_conjob_check_order_not_synced' ) );
+		add_action( 'init', 'dev_debug' );
+	}
 
+	public function dev_debug() {
+		if ( isset( $_GET['dev'] ) && $_GET['dev'] ) {
+			if ( isset( $_GET['ts_action'] ) ) {
+				if ( 'remote' == $_GET['ts_action'] ) {
+					$order_id = 18512;
+					$order_uniqid = get_post_meta( $order_id, '_origin_order_uniqid', true );
+					$result = $this->remote_check_order_exists( $order_uniqid );
+
+					echo '<pre>:';
+					print_r( $result );
+					echo '</pre>';
+				}
+			}
+		}
 	}
 
 	public function _conjob_check_order_not_synced() {

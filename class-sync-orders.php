@@ -117,6 +117,7 @@ class TeeSight_Sync_Order {
 		$rest_api_link = untrailingslashit( $this->remote_site_url ) . '/wp-json/teesight/v1/order_exists/' . $order_uniqid;
 		$remote_args = array(
 			'timeout' => 3600,
+			'sslverify' => false,
 		);
 		$response = wp_remote_get( $rest_api_link, $remote_args );
 		$result = json_decode( $response['body'], true );
@@ -134,7 +135,7 @@ class TeeSight_Sync_Order {
 		if ( isset( $settings['site_address'] ) && strpos( $settings['site_address'], $host ) > 0 ) {
 			$allow = true;
 		}
-		return true;
+		return $allow;
 	}
 
 	public function get_origin_product_full_print( $product_id ) {

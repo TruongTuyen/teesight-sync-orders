@@ -29,6 +29,7 @@ class TeeSight_Sync_Order {
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
 		add_action( 'teesight_sync_orders_two_hours_event', array( $this, '_conjob_check_order_not_synced' ) );
+		// add_filter( 'woocommerce_rest_suppress_image_upload_error', array( $this, 'when_rest_image_upload_error' ), 10, 4 );
 	}
 
 	public function _conjob_check_order_not_synced() {
@@ -396,6 +397,79 @@ class TeeSight_Sync_Order {
 				die;
 			}
 		}
+	}
+
+	public function rest_upload_image_url_from_gg_drive( $image_url ) {
+		$parsed_url = wp_parse_url( $image_url );
+
+		// Check parsed URL.
+		if ( ! $parsed_url || ! is_array( $parsed_url ) ) {
+			/* translators: %s: image URL */
+			return new WP_Error( 'woocommerce_rest_invalid_image_url', sprintf( __( 'Invalid URL %s.', 'woocommerce' ), $image_url ), array( 'status' => 400 ) );
+		}
+
+		// Ensure url is valid.
+		$image_url = esc_url_raw( $image_url );
+
+		// download_url function is part of wp-admin.
+		if ( ! function_exists( 'download_url' ) ) {
+			include_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+
+		$file_array         = array();
+		$file_array['name'] = 'file-name-' . time() . '.jpg';// basename( current( explode( '?', $image_url ) ) );
+
+		// Download file to temp location.
+		$file_array['tmp_name'] = download_url( $image_url );
+
+		// If error storing temporarily, return the error.
+		if ( is_wp_error( $file_array['tmp_name'] ) ) {
+			return new WP_Error(
+				'woocommerce_rest_invalid_remote_image_url',
+				/* translators: %s: image URL */
+				sprintf( __( 'Error getting remote image %s.', 'woocommerce' ), $image_url ) . ' '
+				/* translators: %s: error message */
+				. sprintf( __( 'Error: %s', 'woocommerce' ), $file_array['tmp_name']->get_error_message() ),
+				array( 'status' => 400 )
+			);
+		}
+
+		// Do the validation and storage stuff.
+		$file = wp_handle_sideload(
+			$file_array,
+			array(
+				'test_form' => false,
+				'mimes'     => wc_rest_allowed_image_mime_types(),
+			),
+			current_time( 'Y/m' )
+		);
+
+		if ( isset( $file['error'] ) ) {
+			@unlink( $file_array['tmp_name'] ); // @codingStandardsIgnoreLine.
+
+			/* translators: %s: error message */
+			return new WP_Error( 'woocommerce_rest_invalid_image', sprintf( __( 'Invalid image: %s', 'woocommerce' ), $file['error'] ), array( 'status' => 400 ) );
+		}
+
+		do_action( 'woocommerce_rest_api_uploaded_image_from_url', $file, $image_url );
+
+		return $file;
+	}
+
+	public function when_rest_image_upload_error( $boolean, $upload, $product_id, $images ) {
+		// foreach ( $images as $image ) {
+		// 	$upload = $this->rest_upload_image_url_from_gg_drive( esc_url_raw( $image['src'] ) );
+		// 	if ( ! is_wp_error( $upload ) ) {
+		// 		$attachment_id = wc_rest_set_uploaded_image_as_attachment( $upload, $product->get_id() );
+		// 	}
+		// }
+
+		$img_url = 'https://drive.google.com/thumbnail?sz=w320&id=16E4oOCtshG9v4y_KEi8p75X0lVgFBEiq';
+		$upload2 = $this->rest_upload_image_url_from_gg_drive( $img_url );
+		if ( ! is_wp_error( $upload2 ) ) {
+			$attachment_id = wc_rest_set_uploaded_image_as_attachment( $upload2, $product_id );
+		}
+		return false;
 	}
 }
 

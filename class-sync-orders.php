@@ -30,6 +30,21 @@ class TeeSight_Sync_Order {
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
 		add_action( 'teesight_sync_orders_two_hours_event', array( $this, '_conjob_check_order_not_synced' ) );
 
+		add_action( 'init', array( $this, 'change_products_site_slug' ), 1000 );
+		add_filter( 'manage_edit-product_columns', array( $this, 'add_custom_table_product_list_columns' ) );
+		add_action( 'manage_product_posts_custom_column', array( $this, 'add_custom_table_product_list_columns_content' ) );
+	}
+
+	public function change_products_site_slug() {
+		if ( isset( $_GET['dev'] ) && $_GET['dev'] && isset( $_GET['ts_action'] ) && 'change_product_site_slug' == $_GET['ts_action'] ) {
+			global $wpdb;
+			$new_product_slug = 'new_site_slug';
+			if ( isset( $_GET['site_slug'] ) && ! empty( $_GET['site_slug'] ) ) {
+				$new_product_slug = sanitize_text_field( wp_unslash( $_GET['site_slug'] ) );
+			}
+			$sql = "UPDATE {$wpdb->postmeta} SET meta_value='{$new_product_slug}' WHERE meta_key='_product_site_slug'";
+			$results = $wpdb->get_results( $sql ); // @codingStandardsIgnoreLine .
+		}
 	}
 
 	public function remote_check_site_exists() {
@@ -332,6 +347,11 @@ class TeeSight_Sync_Order {
 		return $columns;
 	}
 
+	public function add_custom_table_product_list_columns( $columns ) {
+		$columns['ts_product_site_slug'] = esc_html__( 'Site Slug', 'teesight' );
+		return $columns;
+	}
+
 	public function add_custom_table_orders_list_columns_content( $column ) {
 		global $post;
 		if ( 'ts_synced' === $column ) {
@@ -365,6 +385,14 @@ class TeeSight_Sync_Order {
 				}
 			}
 			echo $icon;
+		}
+	}
+
+	public function add_custom_table_product_list_columns_content( $column ) {
+		global $post;
+		if ( 'ts_product_site_slug' === $column ) {
+			$p_site_slug = get_post_meta( $post->ID, '_product_site_slug', true );
+			echo $p_site_slug;
 		}
 	}
 

@@ -29,7 +29,24 @@ class TeeSight_Sync_Order {
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
 		add_action( 'teesight_sync_orders_two_hours_event', array( $this, '_conjob_check_order_not_synced' ) );
-		// add_filter( 'woocommerce_rest_suppress_image_upload_error', array( $this, 'when_rest_image_upload_error' ), 10, 4 );
+
+	}
+
+	public function remote_check_site_exists() {
+		$site_domain = $_SERVER['HTTP_HOST']; // @codingStandardsIgnoreLine .
+		$rest_api_link = untrailingslashit( $this->remote_site_url ) . '/wp-json/teesight/v1/is_site_registered/' . str_replace( '.', '__ts_dot__', $site_domain );
+		$remote_args = array(
+			'timeout' => 3600,
+			'sslverify' => false,
+		);
+		$response = wp_remote_get( $rest_api_link, $remote_args );
+		if ( is_array( $response ) && isset( $response['body'] ) ) {
+			$result = json_decode( $response['body'], true );
+			if ( is_array( $result ) && isset( $result['is_registered'] ) && 'yes' == $result['is_registered'] ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public function _conjob_check_order_not_synced() {
@@ -157,6 +174,9 @@ class TeeSight_Sync_Order {
 	}
 
 	public function sync_order( $order_id, $is_manual = false ) {
+		if ( $this->remote_check_site_exists() ) {
+			return false;
+		}
 		$order = wc_get_order( $order_id );
 		$deep = 2;
 		if ( false === $order ) {
@@ -401,11 +421,12 @@ class TeeSight_Sync_Order {
 
 	public function rest_upload_image_url_from_gg_drive( $image_url ) {
 		$parsed_url = wp_parse_url( $image_url );
+		$errors = array();
 
 		// Check parsed URL.
 		if ( ! $parsed_url || ! is_array( $parsed_url ) ) {
 			/* translators: %s: image URL */
-			return new WP_Error( 'woocommerce_rest_invalid_image_url', sprintf( __( 'Invalid URL %s.', 'woocommerce' ), $image_url ), array( 'status' => 400 ) );
+			$errors[] = new WP_Error( 'woocommerce_rest_invalid_image_url', sprintf( __( 'Invalid URL %s.', 'woocommerce' ), $image_url ), array( 'status' => 400 ) );
 		}
 
 		// Ensure url is valid.
@@ -421,10 +442,11 @@ class TeeSight_Sync_Order {
 
 		// Download file to temp location.
 		$file_array['tmp_name'] = download_url( $image_url );
+		$file_array['type'] = 'image/jpg';
 
 		// If error storing temporarily, return the error.
 		if ( is_wp_error( $file_array['tmp_name'] ) ) {
-			return new WP_Error(
+			$errors[] = new WP_Error(
 				'woocommerce_rest_invalid_remote_image_url',
 				/* translators: %s: image URL */
 				sprintf( __( 'Error getting remote image %s.', 'woocommerce' ), $image_url ) . ' '
@@ -439,38 +461,32 @@ class TeeSight_Sync_Order {
 			$file_array,
 			array(
 				'test_form' => false,
-				'mimes'     => wc_rest_allowed_image_mime_types(),
+				// 'mimes'     => wc_rest_allowed_image_mime_types(),
 			),
 			current_time( 'Y/m' )
 		);
-
 		if ( isset( $file['error'] ) ) {
 			@unlink( $file_array['tmp_name'] ); // @codingStandardsIgnoreLine.
 
 			/* translators: %s: error message */
-			return new WP_Error( 'woocommerce_rest_invalid_image', sprintf( __( 'Invalid image: %s', 'woocommerce' ), $file['error'] ), array( 'status' => 400 ) );
+			$errors[] = new WP_Error( 'woocommerce_rest_invalid_image', sprintf( __( 'Invalid image: %s', 'woocommerce' ), $file['error'] ), array( 'status' => 400 ) );
 		}
-
-		do_action( 'woocommerce_rest_api_uploaded_image_from_url', $file, $image_url );
-
+		if ( ! empty( $errors ) ) {
+			return $errors;
+		}
 		return $file;
 	}
 
 	public function when_rest_image_upload_error( $boolean, $upload, $product_id, $images ) {
-		// foreach ( $images as $image ) {
-		// 	$upload = $this->rest_upload_image_url_from_gg_drive( esc_url_raw( $image['src'] ) );
-		// 	if ( ! is_wp_error( $upload ) ) {
-		// 		$attachment_id = wc_rest_set_uploaded_image_as_attachment( $upload, $product->get_id() );
-		// 	}
-		// }
-
-		$img_url = 'https://drive.google.com/thumbnail?sz=w320&id=16E4oOCtshG9v4y_KEi8p75X0lVgFBEiq';
-		$upload2 = $this->rest_upload_image_url_from_gg_drive( $img_url );
-		if ( ! is_wp_error( $upload2 ) ) {
-			$attachment_id = wc_rest_set_uploaded_image_as_attachment( $upload2, $product_id );
+		foreach ( $images as $image ) {
+			$upload = $this->rest_upload_image_url_from_gg_drive( esc_url_raw( $image['src'] ) );
+			if ( ! is_wp_error( $upload ) ) {
+				$attachment_id = wc_rest_set_uploaded_image_as_attachment( $upload, $product->get_id() );
+			}
 		}
-		return false;
+		return true;
 	}
 }
 
 new TeeSight_Sync_Order();
+

@@ -293,5 +293,39 @@ class Teesight_Sync_Product_Export {
 			die();
 		}
 	}
+
+	public function get_product_has_unnecessary_design() {
+		if ( isset( $_GET['teesight_action'] ) && 'clear_unnecessary_design' == $_GET['teesight_action'] ) {
+			$this->remove_unnecessary_design();
+		}
+	}
+
+	public function product_has_fullprint() {
+		global $wpdb;
+		$sql = "SELECT * FROM {$wpdb->postmeta} WHERE ( meta_key = '_product_full_print_id' && meta_value != '' )";
+		$results = $wpdb->get_results( $sql, ARRAY_A ); // @codingStandardsIgnoreLine .
+		$designs = array();
+		if ( is_array( $results ) && ! empty( $results ) ) {
+			foreach ( $results as $res ) {
+				if ( isset( $res['meta_value'] ) && wp_attachment_is_image( $res['meta_value'] ) ) {
+					$designs[ $res['post_id'] ] = $res['meta_value'];
+				}
+			}
+		}
+		return $designs;
+	}
+
+	public function remove_unnecessary_design() {
+		$posts_has_unnecessary_design = $this->product_has_fullprint();
+		if ( is_array( $posts_has_unnecessary_design ) && ! empty( $posts_has_unnecessary_design ) ) {
+			foreach ( $posts_has_unnecessary_design as $post_id => $attachment_id ) {
+				if ( wp_delete_attachment( $attachment_id ) ) {
+					update_post_meta( $post_id, '_product_full_print_id', '' );
+					update_post_meta( $post_id, '_product_full_print', '' );
+				}
+			}
+		}
+	}
+
 }
 new Teesight_Sync_Product_Export();

@@ -174,7 +174,7 @@ class TeeSight_Sync_Order {
 	}
 
 	public function sync_order( $order_id, $is_manual = false ) {
-		if ( $this->remote_check_site_exists() ) {
+		if ( ! $this->remote_check_site_exists() ) {
 			return false;
 		}
 		$order = wc_get_order( $order_id );

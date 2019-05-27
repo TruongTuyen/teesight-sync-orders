@@ -153,12 +153,14 @@ class TeeSight_Sync_Order {
 			'sslverify' => false,
 		);
 		$response = wp_remote_get( $rest_api_link, $remote_args );
-		$result = json_decode( $response['body'], true );
+		if ( is_array( $response ) && isset( $response['body'] ) ) {
+			$result = json_decode( $response['body'], true );
 
-		if ( is_array( $result ) && isset( $result['is_exist'] ) && 'true' === $result['is_exist'] ) {
-			return 'exist';
-		} elseif ( is_array( $result ) && isset( $result['is_exist'] ) && 'fail' === $result['is_exist'] ) {
-			return 'not_exist';
+			if ( is_array( $result ) && isset( $result['is_exist'] ) && 'true' === $result['is_exist'] ) {
+				return 'exist';
+			} elseif ( is_array( $result ) && isset( $result['is_exist'] ) && 'fail' === $result['is_exist'] ) {
+				return 'not_exist';
+			}
 		}
 		return 'unknow';
 	}

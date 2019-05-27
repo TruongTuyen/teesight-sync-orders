@@ -28,11 +28,12 @@ class TeeSight_Sync_Order {
 		add_filter( 'http_request_host_is_external', array( $this, 'allow_custom_host' ), 10, 3 );
 		add_action( 'woocommerce_process_shop_order_meta', array( $this, 'manual_create_order' ), PHP_INT_MAX, 1 );
 		add_action( 'woocommerce_order_edit_status', array( $this, 'detect_order_bulk_action' ), PHP_INT_MAX, 2 );
-		add_action( 'teesight_sync_orders_two_hours_event', array( $this, '_conjob_check_order_not_synced' ) );
+		add_action( 'teesight_sync_orders_two_hours_event', array( $this, 'cronjob_check_order_not_synced' ) );
 
 		add_action( 'init', array( $this, 'change_products_site_slug' ), 1000 );
 		add_filter( 'manage_edit-product_columns', array( $this, 'add_custom_table_product_list_columns' ) );
 		add_action( 'manage_product_posts_custom_column', array( $this, 'add_custom_table_product_list_columns_content' ) );
+		add_action( 'init', array( $this, 'manual_sync_orders_not_synced' ), 10000 );
 	}
 
 	public function change_products_site_slug() {
@@ -64,20 +65,36 @@ class TeeSight_Sync_Order {
 		return false;
 	}
 
-	public function _conjob_check_order_not_synced() {
+	public function try_sync_orders_not_synced() {
+		set_time_limit( 0 );
 		$args = array(
 			'status' => 'processing',
 			'order_not_synced' => 'yes',
 		);
+		$errors = array();
 		$orders = wc_get_orders( $args );
 		if ( is_array( $orders ) && ! empty( $orders ) ) {
 			foreach ( $orders as $__order ) {
 				if ( is_object( $__order ) && method_exists( $__order, 'get_id' ) ) {
 					$order_id = $__order->get_id();
-					$this->manual_create_order( $order_id );
+					try {
+						$this->manual_create_order( $order_id );
+					} catch ( Exception $e ) {
+						$errors[] = $e->getMessage();
+					}
 				}
 			}
 		}
+	}
+
+	public function manual_sync_orders_not_synced() {
+		if ( isset( $_GET['dev'] ) && $_GET['dev'] && isset( $_GET['ts_action'] ) && 'sync_orders_not_synced' == $_GET['ts_action'] ) {
+			$this->try_sync_orders_not_synced();
+		}
+	}
+
+	public function cronjob_check_order_not_synced() {
+		$this->try_sync_orders_not_synced();
 	}
 
 	public function modify_order_query( $query, $query_vars ) {

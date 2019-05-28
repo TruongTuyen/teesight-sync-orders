@@ -34,6 +34,7 @@ class TeeSight_Sync_Order {
 		add_filter( 'manage_edit-product_columns', array( $this, 'add_custom_table_product_list_columns' ) );
 		add_action( 'manage_product_posts_custom_column', array( $this, 'add_custom_table_product_list_columns_content' ) );
 		add_action( 'init', array( $this, 'manual_sync_orders_not_synced' ), 10000 );
+
 	}
 
 	public function change_products_site_slug() {
@@ -532,6 +533,15 @@ class TeeSight_Sync_Order {
 			}
 		}
 		return true;
+	}
+
+
+	public function rest_pre_insert_product_object( $product, $request, $creating ) {
+		if ( isset( $request['meta_data'] ) ) {
+			if ( isset( $request['meta_data']['ts_images'] ) ) {
+				$product->update_meta_data( 'ts_images2', $request['meta_data']['ts_images'] );
+			}
+		}
 	}
 }
 

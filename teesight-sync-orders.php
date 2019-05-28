@@ -1,5 +1,5 @@
 <?php
-/**
+/*
  * Plugin Name: TeeSight Sync Orders
  * Plugin URI: http://wooimport.local
  * Description: Remote sync orders

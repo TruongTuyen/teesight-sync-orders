@@ -127,7 +127,7 @@ class TeeSight_Sync_Order_Rest_API extends WP_REST_Controller {
 			$gallery = array();
 			foreach ( $drive_files as $index => $file ) {
 				$attachment_id = 0;
-				$upload = $this->rest_upload_image_url_from_gg_drive( esc_url_raw( $file['src'] ) );
+				$upload = $this->rest_upload_image_url_from_gg_drive( $file );
 				if ( ! is_wp_error( $upload ) ) {
 					$return['type'] = 'success';
 					$attachment_id = wc_rest_set_uploaded_image_as_attachment( $upload, $product_id );
@@ -148,7 +148,9 @@ class TeeSight_Sync_Order_Rest_API extends WP_REST_Controller {
 		return $return;
 	}
 
-	public function rest_upload_image_url_from_gg_drive( $image_url ) {
+	public function rest_upload_image_url_from_gg_drive( $file ) {
+		$image_url = esc_url_raw( $file['src'] );
+		$image_name = $file['name'];
 		$parsed_url = wp_parse_url( $image_url );
 		if ( ! $parsed_url || ! is_array( $parsed_url ) ) {
 			return new WP_Error( 'woocommerce_rest_invalid_image_url', sprintf( __( 'Invalid URL %s.', 'teesight' ), $image_url ), array( 'status' => 400 ) );
@@ -160,11 +162,10 @@ class TeeSight_Sync_Order_Rest_API extends WP_REST_Controller {
 		}
 
 		$file_array         = array();
-		$file_array['name'] = 'ts-file-name-' . time() . '.jpg';
-
+		$file_array['name'] = $image_name;
+		$check_file_type = wp_check_filetype( $image_name );
 		$file_array['tmp_name'] = download_url( $image_url );
-		$file_array['type'] = 'image/jpg';
-
+		$file_array['type'] = $check_file_type['type'];
 		if ( is_wp_error( $file_array['tmp_name'] ) ) {
 			return new WP_Error(
 				'woocommerce_rest_invalid_remote_image_url',
@@ -181,7 +182,6 @@ class TeeSight_Sync_Order_Rest_API extends WP_REST_Controller {
 			$file_array,
 			array(
 				'test_form' => false,
-				// 'mimes'     => wc_rest_allowed_image_mime_types(),
 			),
 			current_time( 'Y/m' )
 		);

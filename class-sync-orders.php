@@ -17,6 +17,7 @@ class TeeSight_Sync_Order {
 					'wp_api' => true,
 					'version' => 'wc/v3',
 					'verify_ssl' => false,
+					'timeout' => 1800,
 				)
 			);
 		}
